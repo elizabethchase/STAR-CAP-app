@@ -1,0 +1,5 @@
+---
+output: html_document
+---
+
+These points are then summed. The final sum is grouped into stages as follows:

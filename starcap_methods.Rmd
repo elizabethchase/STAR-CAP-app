@@ -1,0 +1,30 @@
+---
+output: html_document
+---
+
+## Purpose 
+
+Our staging model is for patients diagnosed with prostate cancer who have not yet begun treatment. We predict the long-term chances of dying from prostate cancer after standard treatments including surgical removal of the prostate gland or curative radiation therapy with or without hormonal therapy. 
+
+## Methods
+
+The models were built based on a collection of over 40,000 prostate cancer patients diagnosed and treated in North America and Europe from 1992-2013 as part of the International Staging Collaboration for Cancer of the Prostate (STAR-CAP) cohort. The variables include age, clinical T-stage, clinical N-stage, primary and secondary Gleason score based on biopsy, percent positive cores (percent of total biopsy cores positive/total biopsy cores), and pretreatment serum prostate specific antigen. The model given here provides clinical prognostic stage grouping (Stage IA-IIIC). 
+
+Patients input:
+
+- Age
+
+- Clinical T-stage
+
+- Clinical N-stage
+
+- Gleason grade
+
+- Number of positive cores
+
+- Number of negative cores
+
+- PSA
+
+Based on these inputs, we assign patients a Clinical Prognostics Staging Group between IA-IIIC, and provide mortality and survival predictions based on that stage. More information on how Staging Group is assigned and how these models were built can be found under the More Information tab.
+

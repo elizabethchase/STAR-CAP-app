@@ -1,0 +1,10 @@
+---
+output: html_document
+---
+
+## Stage Assignment
+
+For each risk factor, patients receive a number of points as follows:
+
+
+
