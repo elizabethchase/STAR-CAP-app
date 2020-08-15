@@ -3,6 +3,7 @@
 #Load any additional packages you need here:
 library(shiny)
 library(shinyBS)
+library(shinyjs)
 library(survival)
 library(ggplot2)
 library(dplyr)
@@ -22,14 +23,9 @@ load("ClinMods.RData")
 
 # Defining the user interface:
 ui <- fluidPage(
-        
         titlePanel("STAR CAP Prostate Cancer Staging System"), #Feel free to change the title if you have thoughts!
             mainPanel(
                 tabsetPanel(
-                    tabPanel("Introduction", 
-                             br(),
-                             includeMarkdown("starcap_methods.Rmd"),
-                             br()),
                     tabPanel("STAR CAP Clinical Prognostic Stage Group",
                              sidebarLayout(
                                 sidebarPanel(
@@ -93,39 +89,50 @@ ui <- fluidPage(
                                                   "right", options = list(container = "body"))
                                         ),
                                 mainPanel(
-                                        h3("STAR CAP Staging Results"),
-                                        textOutput("text1"), 
-                                        br(),
-                                        tableOutput("table1"),
-                                        textOutput("text2"),
-                                        br(),
-                                        plotOutput("pict1"),
-                                        br(),
-                                        "For more specific survival information, please see the Cumulative Incidence tab.",
-                                        br(),
-                                        bsTooltip("table1", "This predicts a patient's probability of dying of his prostate cancer at 5 and 10 years.", 
-                                                  "right", options = list(container = "body"))
+                                  br(),
+                                  "Our staging model is for patients diagnosed with prostate cancer who have not 
+                                           yet begun treatment. We predict the long-term chances of dying from prostate cancer 
+                                           after standard treatments including surgical removal of the prostate gland or 
+                                           curative radiation therapy with or without hormonal therapy.",
+                                  br(),
+                                  br(),
+                                  br(),
+                                  tabsetPanel(
+                                    tabPanel(
+                                      "Stage",
+                                      br(),
+                                      textOutput("text1"), 
+                                      br(),
+                                      tableOutput("table1"),
+                                      bsTooltip("table1", "This predicts a patient's probability of dying of his prostate cancer at 5 and 10 years.", 
+                                                "right", options = list(container = "body"))
+                                    ),
+                                    tabPanel(
+                                      "Pictogram",
+                                      br(),
+                                      textOutput("text2"),
+                                      br(),
+                                      plotOutput("pict1")
+                                    ),
+                                    tabPanel(
+                                      "Cumulative Incidence",
+                                      plotOutput("plot1"),
+                                      fluidRow(
+                                        column(sliderInput(inputId = "years", label="Years", min = 0, max = 15, value = 10), width = 10),
+                                        column(submitButton("Update"), width = 2)
+                                      ),
+                                      br(),
+                                      textOutput("info1"), 
+                                      textOutput("info2"), 
+                                      textOutput("info3"), 
+                                      br(),
+                                      br(),
+                                      br()
+                                    )
+                                  )
                                 )
         )
      ), 
-     tabPanel("Cumulative Incidence",
-                              h3("STAR CAP Staging Results"),
-                              br(),
-                              "This plot provides predictions of the cumulative incidence of prostate cancer specific mortality. To modify this plot, 
-                              please input patient characteristics in the Basic Predictions tab. To get prostate cancer specific mortality predictions 
-                              at particular times, input the desired time using the slider below.",
-                              br(),
-                              br(),
-                              plotOutput("plot1"),
-                              sliderInput(inputId = "years", label="Years", min = 0, max = 15, value = 10), 
-                              fluidRow(
-                                      column(submitButton("Update"), width = 2),
-                                      column(textOutput("info"), width = 10)
-                              ),
-                              br(),
-                              br(),
-                              br()
-                      ),
      tabPanel("More Information", 
               br(),
               includeMarkdown("starcap_methods2.Rmd"),
@@ -159,7 +166,7 @@ server <- function(input, output) {
             tstage <- ifelse(input$tstage<=3, 0, 
                          ifelse(input$tstage==4 | input$tstage==5, 1,
                                 ifelse(input$tstage==6 | input$tstage==7, 2, 3)))
-            age_score <- ifelse(input$age <= 50, 0, 1)
+            age_score <- ifelse(input$age > 50 & input$age <= 70, 0, 1)
             psa <- ifelse(input$psa <= 6, 0, 
                       ifelse(input$psa > 6 & input$psa <= 10, 1,
                              ifelse(input$psa > 10 & input$psa <= 20, 2,
@@ -188,17 +195,83 @@ server <- function(input, output) {
             pcsm_surv <- pcsm_predictions[,which(c("0","1-2","3-4","5-6","7-8","9-10","11-12", "13-16",">=17")==pcsm_dat$S1_Score_Comb_Final)+1]
             pcsm_time <- pcsm_predictions[,1]
             
-            # 
-            # #And here you might load in predictions from a second model:
-            # #pcsm_surv2 <- pcsm_predictions2$surv[,which(c("0","1-2","3-4","5-6","7-8","9-10","11-12", "13-16",">=17")==pcsm_dat$S1_Score_Comb_Final)]
-            # 
+            # Recoding of inputs --------------------------------------------------------------------------
+            Age <- input$age
+            Age_bin <- cut(input$age, breaks=c(0,50,70,100),include.lowest = TRUE)
+            Age_bin <- relevel(Age_bin, ref="(50,70]")
+            PSA_bin <- cut(input$psa, breaks=c(0,6,10,20,50,200),include.lowest = TRUE)
+            lPSA <- log(input$psa)
+            # Pct_bin <- ifelse(input$pos_cores == 1, "[0,0.5]", 
+            #                   ifelse(input$pos_cores == 2, "(0.5,0.75]", "(0.75,1]"))    
+            # Pct_bin <- factor(Pct_bin, levels= c("[0,0.5]", "(0.5,0.75]", "(0.75,1]"))
+            PctCoresPositive <- pct_score
+            Pct_bin <- cut(pct_score, breaks=c(0,0.5,0.75,1),include.lowest = TRUE)
+            
+            cTstage_Final <- ifelse(input$tstage <= 3, "T1a-c",
+                                    ifelse(input$tstage == 4 | input$tstage==5, "T2a/b",
+                                           ifelse(input$tstage == 6 | input$tstage==7, "T2c/T3a",
+                                                  ifelse(input$tstage == 8 | input$tstage==9, "T3b/T4", NA))))
+            cTstage_Final <- factor(cTstage_Final, levels = c("T1a-c", "T2a/b", "T2c/T3a", "T3b/T4"))
+            cNstage <- factor(input$nstage, levels = c(0, 1))
+                        
+            cGradeSep <- ifelse(input$primarygleason==3 & input$secondarygleason ==3, "<=6",
+                                ifelse(input$primarygleason==3 & input$secondarygleason ==4, "3+4",
+                                       ifelse(input$primarygleason==4 & input$secondarygleason ==3, "4+3",
+                                              ifelse((input$primarygleason==4 & input$secondarygleason ==4) | 
+                                                             (input$primarygleason==3 & input$secondarygleason ==5), "4+4/3+5",
+                                                     ifelse(input$primarygleason==4 & input$secondarygleason ==5, "4+5", 
+                                                            ifelse((input$primarygleason==5 & input$secondarygleason ==3) | 
+                                                                           (input$primarygleason==5 & input$secondarygleason ==4), "5+3/5+4", NA))))))
+            cGradeSep <- factor(cGradeSep, c("<=6", "3+4", "4+3", "4+4/3+5", "4+5", "5+3/5+4"))
+            TreatmentYear <- 2013
+            
+            # Prediction function 
+            pred.ctsMod <- function(mod, covs) {
+                    lhat <- cumsum(exp(sum(covs * mod$coef)) * mod$bfitj)
+                    lhat <- cbind(mod$uftime, 1 - exp(-lhat))
+                    lhat
+            }
+            
+            covs_me <- model.matrix(~ Age_bin + cTstage_Final + cNstage + cGradeSep + Pct_bin + PSA_bin + TreatmentYear )[-1]
+            pcsm_me_predictions <- pred.ctsMod(Cts_me_pred, covs=covs_me)
+            
+            covs_nonlin_full <- model.matrix(~ cGradeSep  
+                                             +cNstage
+                                             +cTstage_Final
+                                             +Age
+                                             +lPSA
+                                             +PctCoresPositive
+                                             +TreatmentYear
+                                             +cGradeSep*cTstage_Final
+                                             +cGradeSep*lPSA
+                                             +cGradeSep*Age
+                                             +cGradeSep*PctCoresPositive
+                                             +cTstage_Final*lPSA
+                                             +cTstage_Final*Age
+                                             +cTstage_Final*PctCoresPositive
+                                             +cNstage*lPSA
+                                             +cNstage*Age
+                                             +cNstage*PctCoresPositive
+                                             +lPSA*Age
+                                             +lPSA*PctCoresPositive
+                                             +Age*PctCoresPositive)[,-1]
+            
+            covs_nonlin <- covs_nonlin_full[c(1:13, 22, 27, 34, 36, 37, 39, 40, 42, 44:46, 52, 57, 58)]
+            pcsm_nonlin_predictions <- pred.ctsMod(Cts_nonlin_pred, covs = covs_nonlin)
+            
             # #Combine this into a data-frame:
             # #alldat <- data.frame("Time" = rep(c(0, pcsm_time), 2), "Risk" = c(pcsm_surv, pcsm_surv2),
             #     #            "Model" = c(rep("Score", length(pcsm_time)), rep("Interaction", length(pcsm_time))))
             # 
-            alldat <- data.frame("Time" = rep(c(0, pcsm_time), 1), "Risk" = c(c(0,pcsm_surv)), #, pcsm_surv2),
-                       "Model" = c(rep("Score", length(pcsm_time)+1))) #, rep("Interaction", length(pcsm_time))))
-
+            alldat <- data.frame("Time" = c(0, pcsm_time, 0, pcsm_me_predictions[,1], 0, pcsm_nonlin_predictions[,1]),
+                                 "Risk" = c(0, pcsm_surv, 0, pcsm_me_predictions[,2], 0, pcsm_nonlin_predictions[,2]),
+                                 "Model" = c(rep("Score", length(pcsm_time)+1), 
+                                             rep("Main effects", nrow(pcsm_me_predictions)+1),
+                                             rep("Interaction", nrow(pcsm_nonlin_predictions)+1)))
+            dat_score <- data.frame("Time" = c(0, pcsm_time), "Risk" = c(0, pcsm_surv))
+            dat_me <- data.frame("Time" = c(0, pcsm_me_predictions[,1]), "Risk" = c(0, pcsm_me_predictions[,2]))
+            dat_int <- data.frame("Time" = c(0, pcsm_nonlin_predictions[,1]), "Risk" = c(0, pcsm_nonlin_predictions[,2]))
+            
             #Here you might output each patient's predicted stage:
             stagepred <- case_when(
                     pcsm_dat$S1_Score_Comb_Final=="0" ~ "IA",
@@ -211,17 +284,19 @@ server <- function(input, output) {
                     pcsm_dat$S1_Score_Comb_Final=="13-16" ~ "IIIB",
                     pcsm_dat$S1_Score_Comb_Final==">=17" ~ "IIIC")
             
-            riskten <- alldat$Risk[which.min(abs(alldat$Time-120))]
-            riskfive <- alldat$Risk[which.min(abs(alldat$Time-60))]
+            riskten <- dat_score$Risk[which.min(abs(alldat$Time-120))]
+            riskfive <- dat_score$Risk[which.min(abs(alldat$Time-60))]
             
             resultstab <- data.frame("Metric" = c("Stage", "5-Year Mortality", "10-Year Mortality"), 
                                      "Prediction" = c(stagepred, paste0(round(riskfive*100, digits = 2), "%"),
                                                 paste0(round(riskten*100, digits = 2), "%")))
             
-            mypred <- round(alldat$Risk[which.min(abs(alldat$Time-input$years*12))]*100, digits=2)
+            mypred <- round(dat_score$Risk[which.min(abs(dat_score$Time-input$years*12))]*100, digits=2)
+            mypred_me <- round(dat_me$Risk[which.min(abs(dat_me$Time-input$years*12))]*100, digits=2)
+            mypred_int <- round(dat_int$Risk[which.min(abs(dat_int$Time-input$years*12))]*100, digits=2)
             
             #Output results:
-            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred)
+            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_me = mypred_me, mypred_int = mypred_int)
 
         })
        
@@ -271,17 +346,23 @@ server <- function(input, output) {
        })
        
        output$plot1 <- renderPlot({
-               ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Risk*100), size = 1.5,
+               ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Risk*100, group = Model, color = Model), size = 1.5,
                                     direction = "hv", alpha = 1) +
                        scale_x_continuous("Years", limits = c(0, 192), breaks = seq(0, 192, by=48), labels = c("0", "4", "8", "12", "16")) +
                        scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) +
-                       scale_color_manual(values = c("gray74", "mediumpurple4")) + theme_bw() + 
+                       scale_color_manual(values = c("gray74", "mediumpurple4", "red")) + theme_bw() + 
                        geom_hline(yintercept = model()$alldat$Risk[which.min(abs(model()$alldat$Time-input$years*12))]*100) + 
                        geom_vline(xintercept = input$years*12)
        })
        
-       output$info <- renderText({
-               paste0("At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred, "%.")
+       output$info1 <- renderText({
+               paste0("Score model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred, "%.")
+       })
+       output$info2 <- renderText({
+               paste0("Main effect model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_me, "%.")
+       })
+       output$info3 <- renderText({
+               paste0("Interaction model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_int, "%.")
        })
        
        output$infotable2 <- function(){
@@ -293,15 +374,16 @@ server <- function(input, output) {
                kable(testdat, col.names = NULL) %>% kable_styling()}
        
        output$infotable1 <- function(){
-               testdat <- data.frame("Characteristic" = c("Age", "   0-50", "   51+", "Grade", "   3+3", "   3+4", "   4+3", 
+               testdat <- data.frame("Characteristic" = c("Age", "   0-50","   51-70", "   71+", "Grade", "   3+3", "   3+4", "   4+3", 
                                                           "   4+4, 3+5", "   4+5", "   5+3, 5+4, 5+5", "Percent Positive Cores", 
                                                           "   0-50%", "   51-75%", "   76-100%", "Clinical N Stage", "   N0", 
                                                           "   N1", "Clinical T Stage", "   T1a-c", "   T2a-b", "   T2c, T3a", 
                                                           "   T3b, T4", "PSA", "   0-6", "   7-10", "   11-20", "   21-50", "   51-200"), 
-                                     "Points" = c("", "0", "1", "", "0", "3", "5", "6", "7", "8", "", "0", "2", "3", "", "0", "1", "", "0", 
+                                     "Points" = c("", "1", "0", "1", "", "0", "3", "5", "6", "7", "8", "", "0", "2", "3", "", "0", "8", "", "0", 
                                                   "1", "2", "3", "", "0", "1", "2", "3", "4"))
                
-               kable(testdat, booktabs=T) %>% kable_styling() %>% add_indent(c(2:3, 5:10, 12:14, 16:17, 19:22, 24:28))}
+               kable(testdat, booktabs=T) %>% kable_styling() %>% add_indent(c(2:4, 6:11, 13:15, 17:18, 20:23, 25:29))}
+ 
 }
 
 # Run the application 

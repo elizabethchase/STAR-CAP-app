@@ -1,7 +1,10 @@
 ---
 output: html_document
+bibliography: bibliography.bib
 ---
 
 ## Model Building and Validation
 
 ## References
+
+Dess RT, Suresh K, Zelefsky MJ, Freedland SJ, Mahal BA, ... Schipper MJ and Spratt DE. 2020. Development and Validation of a Clinical Prognostic Stage Group System for Non-Metastatic Prostate Cancer: Disease Specific Mortality Results from the International Staging Collaboration for Cancer of the Prostate (STAR-CAP). JAMA Oncology. 
