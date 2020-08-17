@@ -1,6 +1,5 @@
 ---
 output: html_document
-bibliography: bibliography.bib
 ---
 
 ## Model Building and Validation

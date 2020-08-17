@@ -211,8 +211,10 @@ server <- function(input, output) {
                                     ifelse(input$tstage == 4 | input$tstage==5, "T2a/b",
                                            ifelse(input$tstage == 6 | input$tstage==7, "T2c/T3a",
                                                   ifelse(input$tstage == 8 | input$tstage==9, "T3b/T4", NA))))
+            
             cTstage_Final <- factor(cTstage_Final, levels = c("T1a-c", "T2a/b", "T2c/T3a", "T3b/T4"))
-            cNstage <- factor(input$nstage, levels = c(0, 1))
+            intNstage <- ifelse(input$nstage==1, 0, ifelse(input$nstage==2, 1))
+            cNstage <- factor(intNstage, levels = c(0, 1)) ##Bug with how I was adding in Krithika's model
                         
             cGradeSep <- ifelse(input$primarygleason==3 & input$secondarygleason ==3, "<=6",
                                 ifelse(input$primarygleason==3 & input$secondarygleason ==4, "3+4",
@@ -284,16 +286,16 @@ server <- function(input, output) {
                     pcsm_dat$S1_Score_Comb_Final=="13-16" ~ "IIIB",
                     pcsm_dat$S1_Score_Comb_Final==">=17" ~ "IIIC")
             
-            riskten <- dat_score$Risk[which.min(abs(alldat$Time-120))]
-            riskfive <- dat_score$Risk[which.min(abs(alldat$Time-60))]
+            riskten <- dat_score$Risk[which.min(ifelse((120-dat_score$Time) < 0, NA, (120-dat_score$Time)))]
+            riskfive <- dat_score$Risk[which.min(ifelse((60-dat_score$Time) < 0, NA, (60-dat_score$Time)))]
             
             resultstab <- data.frame("Metric" = c("Stage", "5-Year Mortality", "10-Year Mortality"), 
                                      "Prediction" = c(stagepred, paste0(round(riskfive*100, digits = 2), "%"),
                                                 paste0(round(riskten*100, digits = 2), "%")))
-            
-            mypred <- round(dat_score$Risk[which.min(abs(dat_score$Time-input$years*12))]*100, digits=2)
-            mypred_me <- round(dat_me$Risk[which.min(abs(dat_me$Time-input$years*12))]*100, digits=2)
-            mypred_int <- round(dat_int$Risk[which.min(abs(dat_int$Time-input$years*12))]*100, digits=2)
+          
+            mypred <- round(dat_score$Risk[which.min(ifelse((input$years*12-dat_score$Time) < 0, NA, (input$years*12-dat_score$Time)))]*100, digits=2)
+            mypred_me <- round(dat_me$Risk[which.min(ifelse((input$years*12-dat_me$Time) < 0, NA, (input$years*12-dat_me$Time)))]*100, digits=2)
+            mypred_int <- round(dat_int$Risk[which.min(ifelse((input$years*12-dat_int$Time) < 0, NA, (input$years*12-dat_int$Time)))]*100, digits=2)
             
             #Output results:
             list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_me = mypred_me, mypred_int = mypred_int)
@@ -351,7 +353,7 @@ server <- function(input, output) {
                        scale_x_continuous("Years", limits = c(0, 192), breaks = seq(0, 192, by=48), labels = c("0", "4", "8", "12", "16")) +
                        scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) +
                        scale_color_manual(values = c("gray74", "mediumpurple4", "red")) + theme_bw() + 
-                       geom_hline(yintercept = model()$alldat$Risk[which.min(abs(model()$alldat$Time-input$years*12))]*100) + 
+                       geom_hline(yintercept = model()$alldat$Risk[which.min(input$years*12-model()$alldat$Time)]*100) + 
                        geom_vline(xintercept = input$years*12)
        })
        
