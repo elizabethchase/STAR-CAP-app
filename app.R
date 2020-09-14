@@ -123,7 +123,7 @@ ui <- fluidPage(
                                       ),
                                       br(),
                                       textOutput("info1"), 
-                                      textOutput("info2"), 
+                                     # textOutput("info2"), 
                                       textOutput("info3"), 
                                       br(),
                                       br(),
@@ -234,8 +234,8 @@ server <- function(input, output) {
                     lhat
             }
             
-            covs_me <- model.matrix(~ Age_bin + cTstage_Final + cNstage + cGradeSep + Pct_bin + PSA_bin + TreatmentYear )[-1]
-            pcsm_me_predictions <- pred.ctsMod(Cts_me_pred, covs=covs_me)
+            #covs_me <- model.matrix(~ Age_bin + cTstage_Final + cNstage + cGradeSep + Pct_bin + PSA_bin + TreatmentYear )[-1]
+            #pcsm_me_predictions <- pred.ctsMod(Cts_me_pred, covs=covs_me)
             
             covs_nonlin_full <- model.matrix(~ cGradeSep  
                                              +cNstage
@@ -262,16 +262,18 @@ server <- function(input, output) {
             pcsm_nonlin_predictions <- pred.ctsMod(Cts_nonlin_pred, covs = covs_nonlin)
             
             # #Combine this into a data-frame:
-            # #alldat <- data.frame("Time" = rep(c(0, pcsm_time), 2), "Risk" = c(pcsm_surv, pcsm_surv2),
-            #     #            "Model" = c(rep("Score", length(pcsm_time)), rep("Interaction", length(pcsm_time))))
-            # 
-            alldat <- data.frame("Time" = c(0, pcsm_time, 0, pcsm_me_predictions[,1], 0, pcsm_nonlin_predictions[,1]),
-                                 "Risk" = c(0, pcsm_surv, 0, pcsm_me_predictions[,2], 0, pcsm_nonlin_predictions[,2]),
-                                 "Model" = c(rep("Score", length(pcsm_time)+1), 
-                                             rep("Main effects", nrow(pcsm_me_predictions)+1),
-                                             rep("Interaction", nrow(pcsm_nonlin_predictions)+1)))
+            #alldat <- data.frame("Time" = c(0, pcsm_time, 0, pcsm_me_predictions[,1], 0, pcsm_nonlin_predictions[,1]),
+             #                    "Risk" = c(0, pcsm_surv, 0, pcsm_me_predictions[,2], 0, pcsm_nonlin_predictions[,2]),
+              #                   "Model" = c(rep("Score", length(pcsm_time)+1), 
+               #                              rep("Main effects", nrow(pcsm_me_predictions)+1),
+                #                             rep("Interaction", nrow(pcsm_nonlin_predictions)+1)))
+            alldat <- data.frame("Time" = c(0, pcsm_time, 0, pcsm_nonlin_predictions[,1]),
+                                "Risk" = c(0, pcsm_surv, 0, pcsm_nonlin_predictions[,2]),
+                               "Model" = c(rep("Score", length(pcsm_time)+1),
+                                         rep("Interaction", nrow(pcsm_nonlin_predictions)+1)))
+            
             dat_score <- data.frame("Time" = c(0, pcsm_time), "Risk" = c(0, pcsm_surv))
-            dat_me <- data.frame("Time" = c(0, pcsm_me_predictions[,1]), "Risk" = c(0, pcsm_me_predictions[,2]))
+            #dat_me <- data.frame("Time" = c(0, pcsm_me_predictions[,1]), "Risk" = c(0, pcsm_me_predictions[,2]))
             dat_int <- data.frame("Time" = c(0, pcsm_nonlin_predictions[,1]), "Risk" = c(0, pcsm_nonlin_predictions[,2]))
             
             #Here you might output each patient's predicted stage:
@@ -294,12 +296,14 @@ server <- function(input, output) {
                                                 paste0(round(riskten*100, digits = 2), "%")))
           
             mypred <- round(dat_score$Risk[which.min(ifelse((input$years*12-dat_score$Time) < 0, NA, (input$years*12-dat_score$Time)))]*100, digits=2)
-            mypred_me <- round(dat_me$Risk[which.min(ifelse((input$years*12-dat_me$Time) < 0, NA, (input$years*12-dat_me$Time)))]*100, digits=2)
+            #mypred_me <- round(dat_me$Risk[which.min(ifelse((input$years*12-dat_me$Time) < 0, NA, (input$years*12-dat_me$Time)))]*100, digits=2)
             mypred_int <- round(dat_int$Risk[which.min(ifelse((input$years*12-dat_int$Time) < 0, NA, (input$years*12-dat_int$Time)))]*100, digits=2)
             
             #Output results:
-            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_me = mypred_me, mypred_int = mypred_int)
-
+            #list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_me = mypred_me, mypred_int = mypred_int)
+            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_int = mypred_int)
+            
+            
         })
        
        output$text1 <- renderText({
@@ -348,21 +352,28 @@ server <- function(input, output) {
        })
        
        output$plot1 <- renderPlot({
+               #ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Risk*100, group = Model, color = Model), size = 1.5,
+                 #                   direction = "hv", alpha = 1) +
+                #       scale_x_continuous("Years", limits = c(0, 192), breaks = seq(0, 192, by=48), labels = c("0", "4", "8", "12", "16")) +
+                  #     scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) +
+                   #    scale_color_manual(values = c("gray74", "mediumpurple4", "red")) + theme_bw() + 
+                    #   geom_hline(yintercept = model()$alldat$Risk[which.min(input$years*12-model()$alldat$Time)]*100) + 
+                     #  geom_vline(xintercept = input$years*12)
                ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Risk*100, group = Model, color = Model), size = 1.5,
                                     direction = "hv", alpha = 1) +
                        scale_x_continuous("Years", limits = c(0, 192), breaks = seq(0, 192, by=48), labels = c("0", "4", "8", "12", "16")) +
                        scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) +
-                       scale_color_manual(values = c("gray74", "mediumpurple4", "red")) + theme_bw() + 
-                       geom_hline(yintercept = model()$alldat$Risk[which.min(input$years*12-model()$alldat$Time)]*100) + 
+                       scale_color_manual(values = c("gray74", "mediumpurple4")) + theme_bw() + 
+                       geom_hline(yintercept = model()$mypred) + geom_hline(yintercept = model()$mypred_int) +
                        geom_vline(xintercept = input$years*12)
        })
        
        output$info1 <- renderText({
                paste0("Score model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred, "%.")
        })
-       output$info2 <- renderText({
-               paste0("Main effect model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_me, "%.")
-       })
+       #output$info2 <- renderText({
+        #       paste0("Main effect model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_me, "%.")
+       #})
        output$info3 <- renderText({
                paste0("Interaction model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_int, "%.")
        })
