@@ -5,9 +5,9 @@ account: elizabethchase
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2630592
-bundleId: 3523703
+bundleId: 3627262
 url: https://elizabethchase.shinyapps.io/STAR-CAP-app/
-when: 1597634950.69912
+when: 1600087873.39526
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: README.md
