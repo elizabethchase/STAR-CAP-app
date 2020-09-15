@@ -101,6 +101,8 @@ ui <- fluidPage(
                                     tabPanel(
                                       "Stage",
                                       br(),
+                                      textOutput("text0"),
+                                      br(),
                                       textOutput("text1"), 
                                       br(),
                                       tableOutput("table1"),
@@ -124,7 +126,7 @@ ui <- fluidPage(
                                       br(),
                                       textOutput("info1"), 
                                      # textOutput("info2"), 
-                                      textOutput("info3"), 
+                                     # textOutput("info3"), 
                                       br(),
                                       br(),
                                       br()
@@ -186,7 +188,11 @@ server <- function(input, output) {
                                                                                              ifelse(subscore>= 13 & subscore <= 16, "13-16",
                                                                                                     ">=17"))))))))
         
-            
+            patient_char <- data.frame("Age" = input$age, "Nstage" = input$nstage, "Tstage" = input$tstage, "PSA" = input$psa, 
+                                       "Pct_cores" = pct_score*100 , "Gleason" = paste0(input$primarygleason, "+", input$secondarygleason))
+            patient_char$Nstage <- factor(patient_char$Nstage, levels=c(1, 2), labels=c("node negative", "node positive"))
+            patient_char$Tstage <- factor(patient_char$Tstage, levels=c(1:9), labels=c("T1a","T1b", "T1c", "T2a","T2b","T2c","T3a","T3b","T4"))
+           
             #Here I'm getting the predictions from the score model (in my original formulation, I outputted the survival curves for each score
             #"pcsm_predictions" and loaded that into the app):
             # Cumulative incidence curves for each Score level 
@@ -196,70 +202,70 @@ server <- function(input, output) {
             pcsm_time <- pcsm_predictions[,1]
             
             # Recoding of inputs --------------------------------------------------------------------------
-            Age <- input$age
-            Age_bin <- cut(input$age, breaks=c(0,50,70,100),include.lowest = TRUE)
-            Age_bin <- relevel(Age_bin, ref="(50,70]")
-            PSA_bin <- cut(input$psa, breaks=c(0,6,10,20,50,200),include.lowest = TRUE)
-            lPSA <- log(input$psa)
+            #Age <- input$age
+            #Age_bin <- cut(input$age, breaks=c(0,50,70,100),include.lowest = TRUE)
+            #Age_bin <- relevel(Age_bin, ref="(50,70]")
+            #PSA_bin <- cut(input$psa, breaks=c(0,6,10,20,50,200),include.lowest = TRUE)
+            #lPSA <- log(input$psa)
             # Pct_bin <- ifelse(input$pos_cores == 1, "[0,0.5]", 
             #                   ifelse(input$pos_cores == 2, "(0.5,0.75]", "(0.75,1]"))    
             # Pct_bin <- factor(Pct_bin, levels= c("[0,0.5]", "(0.5,0.75]", "(0.75,1]"))
-            PctCoresPositive <- pct_score
-            Pct_bin <- cut(pct_score, breaks=c(0,0.5,0.75,1),include.lowest = TRUE)
+            #PctCoresPositive <- pct_score
+            #Pct_bin <- cut(pct_score, breaks=c(0,0.5,0.75,1),include.lowest = TRUE)
             
-            cTstage_Final <- ifelse(input$tstage <= 3, "T1a-c",
-                                    ifelse(input$tstage == 4 | input$tstage==5, "T2a/b",
-                                           ifelse(input$tstage == 6 | input$tstage==7, "T2c/T3a",
-                                                  ifelse(input$tstage == 8 | input$tstage==9, "T3b/T4", NA))))
+            #cTstage_Final <- ifelse(input$tstage <= 3, "T1a-c",
+             #                       ifelse(input$tstage == 4 | input$tstage==5, "T2a/b",
+              #                             ifelse(input$tstage == 6 | input$tstage==7, "T2c/T3a",
+               #                                   ifelse(input$tstage == 8 | input$tstage==9, "T3b/T4", NA))))
             
-            cTstage_Final <- factor(cTstage_Final, levels = c("T1a-c", "T2a/b", "T2c/T3a", "T3b/T4"))
-            intNstage <- ifelse(input$nstage==1, 0, ifelse(input$nstage==2, 1))
-            cNstage <- factor(intNstage, levels = c(0, 1)) ##Bug with how I was adding in Krithika's model
+            #cTstage_Final <- factor(cTstage_Final, levels = c("T1a-c", "T2a/b", "T2c/T3a", "T3b/T4"))
+            #intNstage <- ifelse(input$nstage==1, 0, ifelse(input$nstage==2, 1))
+            #cNstage <- factor(intNstage, levels = c(0, 1)) ##Bug with how I was adding in Krithika's model
                         
-            cGradeSep <- ifelse(input$primarygleason==3 & input$secondarygleason ==3, "<=6",
-                                ifelse(input$primarygleason==3 & input$secondarygleason ==4, "3+4",
-                                       ifelse(input$primarygleason==4 & input$secondarygleason ==3, "4+3",
-                                              ifelse((input$primarygleason==4 & input$secondarygleason ==4) | 
-                                                             (input$primarygleason==3 & input$secondarygleason ==5), "4+4/3+5",
-                                                     ifelse(input$primarygleason==4 & input$secondarygleason ==5, "4+5", 
-                                                            ifelse((input$primarygleason==5 & input$secondarygleason ==3) | 
-                                                                           (input$primarygleason==5 & input$secondarygleason ==4), "5+3/5+4", NA))))))
-            cGradeSep <- factor(cGradeSep, c("<=6", "3+4", "4+3", "4+4/3+5", "4+5", "5+3/5+4"))
-            TreatmentYear <- 2013
+            #cGradeSep <- ifelse(input$primarygleason==3 & input$secondarygleason ==3, "<=6",
+             #                   ifelse(input$primarygleason==3 & input$secondarygleason ==4, "3+4",
+              #                         ifelse(input$primarygleason==4 & input$secondarygleason ==3, "4+3",
+               #                               ifelse((input$primarygleason==4 & input$secondarygleason ==4) | 
+                #                                             (input$primarygleason==3 & input$secondarygleason ==5), "4+4/3+5",
+                 #                                    ifelse(input$primarygleason==4 & input$secondarygleason ==5, "4+5", 
+                  #                                          ifelse((input$primarygleason==5 & input$secondarygleason ==3) | 
+                   #                                                        (input$primarygleason==5 & input$secondarygleason ==4), "5+3/5+4", NA))))))
+            #cGradeSep <- factor(cGradeSep, c("<=6", "3+4", "4+3", "4+4/3+5", "4+5", "5+3/5+4"))
+            #TreatmentYear <- 2013
             
             # Prediction function 
-            pred.ctsMod <- function(mod, covs) {
-                    lhat <- cumsum(exp(sum(covs * mod$coef)) * mod$bfitj)
-                    lhat <- cbind(mod$uftime, 1 - exp(-lhat))
-                    lhat
-            }
+           # pred.ctsMod <- function(mod, covs) {
+            #        lhat <- cumsum(exp(sum(covs * mod$coef)) * mod$bfitj)
+             #       lhat <- cbind(mod$uftime, 1 - exp(-lhat))
+               #     lhat
+            #}
             
             #covs_me <- model.matrix(~ Age_bin + cTstage_Final + cNstage + cGradeSep + Pct_bin + PSA_bin + TreatmentYear )[-1]
             #pcsm_me_predictions <- pred.ctsMod(Cts_me_pred, covs=covs_me)
             
-            covs_nonlin_full <- model.matrix(~ cGradeSep  
-                                             +cNstage
-                                             +cTstage_Final
-                                             +Age
-                                             +lPSA
-                                             +PctCoresPositive
-                                             +TreatmentYear
-                                             +cGradeSep*cTstage_Final
-                                             +cGradeSep*lPSA
-                                             +cGradeSep*Age
-                                             +cGradeSep*PctCoresPositive
-                                             +cTstage_Final*lPSA
-                                             +cTstage_Final*Age
-                                             +cTstage_Final*PctCoresPositive
-                                             +cNstage*lPSA
-                                             +cNstage*Age
-                                             +cNstage*PctCoresPositive
-                                             +lPSA*Age
-                                             +lPSA*PctCoresPositive
-                                             +Age*PctCoresPositive)[,-1]
+            #covs_nonlin_full <- model.matrix(~ cGradeSep  
+             #                                +cNstage
+              #                               +cTstage_Final
+               #                              +Age
+                #                             +lPSA
+                 #                            +PctCoresPositive
+                  #                           +TreatmentYear
+                   #                          +cGradeSep*cTstage_Final
+                    #                         +cGradeSep*lPSA
+                     #                        +cGradeSep*Age
+                      #                       +cGradeSep*PctCoresPositive
+                       #                      +cTstage_Final*lPSA
+                        #                     +cTstage_Final*Age
+                         #                    +cTstage_Final*PctCoresPositive
+                          #                   +cNstage*lPSA
+                           #                  +cNstage*Age
+                            #                 +cNstage*PctCoresPositive
+                             #                +lPSA*Age
+                              #               +lPSA*PctCoresPositive
+                               #              +Age*PctCoresPositive)[,-1]
             
-            covs_nonlin <- covs_nonlin_full[c(1:13, 22, 27, 34, 36, 37, 39, 40, 42, 44:46, 52, 57, 58)]
-            pcsm_nonlin_predictions <- pred.ctsMod(Cts_nonlin_pred, covs = covs_nonlin)
+           # covs_nonlin <- covs_nonlin_full[c(1:13, 22, 27, 34, 36, 37, 39, 40, 42, 44:46, 52, 57, 58)]
+            #pcsm_nonlin_predictions <- pred.ctsMod(Cts_nonlin_pred, covs = covs_nonlin)
             
             # #Combine this into a data-frame:
             #alldat <- data.frame("Time" = c(0, pcsm_time, 0, pcsm_me_predictions[,1], 0, pcsm_nonlin_predictions[,1]),
@@ -267,14 +273,13 @@ server <- function(input, output) {
               #                   "Model" = c(rep("Score", length(pcsm_time)+1), 
                #                              rep("Main effects", nrow(pcsm_me_predictions)+1),
                 #                             rep("Interaction", nrow(pcsm_nonlin_predictions)+1)))
-            alldat <- data.frame("Time" = c(0, pcsm_time, 0, pcsm_nonlin_predictions[,1]),
-                                "Risk" = c(0, pcsm_surv, 0, pcsm_nonlin_predictions[,2]),
-                               "Model" = c(rep("Score", length(pcsm_time)+1),
-                                         rep("Interaction", nrow(pcsm_nonlin_predictions)+1)))
+            alldat <- data.frame("Time" = c(0, pcsm_time),
+                                "Risk" = c(0, pcsm_surv),
+                               "Model" = c(rep("Score", length(pcsm_time)+1)))
             
             dat_score <- data.frame("Time" = c(0, pcsm_time), "Risk" = c(0, pcsm_surv))
             #dat_me <- data.frame("Time" = c(0, pcsm_me_predictions[,1]), "Risk" = c(0, pcsm_me_predictions[,2]))
-            dat_int <- data.frame("Time" = c(0, pcsm_nonlin_predictions[,1]), "Risk" = c(0, pcsm_nonlin_predictions[,2]))
+           # dat_int <- data.frame("Time" = c(0, pcsm_nonlin_predictions[,1]), "Risk" = c(0, pcsm_nonlin_predictions[,2]))
             
             #Here you might output each patient's predicted stage:
             stagepred <- case_when(
@@ -291,20 +296,28 @@ server <- function(input, output) {
             riskten <- dat_score$Risk[which.min(ifelse((120-dat_score$Time) < 0, NA, (120-dat_score$Time)))]
             riskfive <- dat_score$Risk[which.min(ifelse((60-dat_score$Time) < 0, NA, (60-dat_score$Time)))]
             
-            resultstab <- data.frame("Metric" = c("Stage", "5-Year Mortality", "10-Year Mortality"), 
-                                     "Prediction" = c(stagepred, paste0(round(riskfive*100, digits = 2), "%"),
-                                                paste0(round(riskten*100, digits = 2), "%")))
+            resultstab <- data.frame("Metric" = c("Stage", "5-Year Prostate Cancer Specific Mortality", "10-Year Prostate Cancer Specific Mortality"), 
+                                     "Prediction" = c(stagepred, paste0(round(riskfive*100, digits = 1), "%"),
+                                                paste0(round(riskten*100, digits = 1), "%")))
           
-            mypred <- round(dat_score$Risk[which.min(ifelse((input$years*12-dat_score$Time) < 0, NA, (input$years*12-dat_score$Time)))]*100, digits=2)
+            mypred <- round(dat_score$Risk[which.min(ifelse((input$years*12-dat_score$Time) < 0, NA, (input$years*12-dat_score$Time)))]*100, digits=1)
             #mypred_me <- round(dat_me$Risk[which.min(ifelse((input$years*12-dat_me$Time) < 0, NA, (input$years*12-dat_me$Time)))]*100, digits=2)
-            mypred_int <- round(dat_int$Risk[which.min(ifelse((input$years*12-dat_int$Time) < 0, NA, (input$years*12-dat_int$Time)))]*100, digits=2)
+            #mypred_int <- round(dat_int$Risk[which.min(ifelse((input$years*12-dat_int$Time) < 0, NA, (input$years*12-dat_int$Time)))]*100, digits=1)
             
             #Output results:
             #list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_me = mypred_me, mypred_int = mypred_int)
-            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_int = mypred_int)
+            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, patient_char = patient_char)
             
             
         })
+       
+       output$text0 <- renderText({
+               
+        paste0("This patient is age ", model()$patient_char$Age, " years, ", model()$patient_char$Nstage, " with T stage ", 
+               model()$patient_char$Tstage, " and Gleason group ", model()$patient_char$Gleason, ". His PSA is ", model()$patient_char$PSA, " ng/mL, and he has ", model()$patient_char$Pct_cores,
+               "% positive cores.")
+               
+       })
        
        output$text1 <- renderText({
         paste0("This patient is grouped in STAR CAP Stage ", model()$stagepred, ".")
@@ -357,26 +370,24 @@ server <- function(input, output) {
                 #       scale_x_continuous("Years", limits = c(0, 192), breaks = seq(0, 192, by=48), labels = c("0", "4", "8", "12", "16")) +
                   #     scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) +
                    #    scale_color_manual(values = c("gray74", "mediumpurple4", "red")) + theme_bw() + 
-                    #   geom_hline(yintercept = model()$alldat$Risk[which.min(input$years*12-model()$alldat$Time)]*100) + 
+                    #   geom_hline(yintercept = model()$mypred) + geom_hline(yintercept = model()$mypred_int)  + 
                      #  geom_vline(xintercept = input$years*12)
-               ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Risk*100, group = Model, color = Model), size = 1.5,
-                                    direction = "hv", alpha = 1) +
+               ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Risk*100), size = 1.5,
+                                    direction = "hv", alpha = 1, color = "mediumpurple4") +
                        scale_x_continuous("Years", limits = c(0, 192), breaks = seq(0, 192, by=48), labels = c("0", "4", "8", "12", "16")) +
-                       scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) +
-                       scale_color_manual(values = c("gray74", "mediumpurple4")) + theme_bw() + 
-                       geom_hline(yintercept = model()$mypred) + geom_hline(yintercept = model()$mypred_int) +
-                       geom_vline(xintercept = input$years*12)
+                       scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) + theme_bw() + 
+                       geom_hline(yintercept = model()$mypred) + geom_vline(xintercept = input$years*12)
        })
        
        output$info1 <- renderText({
-               paste0("Score model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred, "%.")
+               paste0("At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred, "%.")
        })
        #output$info2 <- renderText({
         #       paste0("Main effect model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_me, "%.")
        #})
-       output$info3 <- renderText({
-               paste0("Interaction model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_int, "%.")
-       })
+       #output$info3 <- renderText({
+        #       paste0("Interaction model: At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred_int, "%.")
+       #})
        
        output$infotable2 <- function(){
                testdat <- data.frame("Var" = c("Total Score", "Stage Group"), "zero" = c("0", "IA"), 

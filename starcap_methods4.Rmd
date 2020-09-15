@@ -4,6 +4,10 @@ output: html_document
 
 ## Model Building and Validation
 
+The STAR-CAP data were collected from seven North American and European cancer centers, the SEARCH collaborative, and the CaPSURE registry. The final cohort included patients with prostate cancer treated with curative intent between 1992 and 2013 with follow-up through Dec. 31, 2017. The STAR-CAP data were split 50/50 into training and validation datasets, and follow-up was administratively censored at 15 years. A Fine-Gray regression model with age, T-stage, Gleason grade, percent positive cores, and PSA was fit in the training sample of 9,915 patients, with non-cancer death treated as a competing risk. Regression splines were used to develop cutpoints for continuous covariates, and each group was assigned a point value, to develop the point system given above. 
+
+The model was validated in the validation portion of the STAR-CAP data (n = 9,769), and additionally in patients in SEER (n = 125,575). In the STAR-CAP validation data, our model had a 10-year C-index of 0.796, which outperformed the AJCC 8th edition staging system and the NCCN 3- and 4-tier classification systems, as well as CAPRA. In the SEER validation data, our model had a 5-year C-index of 0.838. 
+
 ## References
 
-Dess RT, Suresh K, Zelefsky MJ, Freedland SJ, Mahal BA, ... Schipper MJ and Spratt DE. 2020. Development and Validation of a Clinical Prognostic Stage Group System for Non-Metastatic Prostate Cancer: Disease Specific Mortality Results from the International Staging Collaboration for Cancer of the Prostate (STAR-CAP). JAMA Oncology. 
+Dess RT, Suresh K, Zelefsky MJ, Freedland SJ, Mahal BA, Cooperberg MR, Davis BJ, Horwitz EM, Terris MK, Amling CL, Aronson WJ, Kane CJ, Jackson WC, Hearn JWD, DeVille C, DeWeese TL, Greco S, McNutt TR, Song DY, Sun Y, Mehra R, Kaffenberger SD, Morgan TM, Nguyen PL, Feng FY, Sharma V, Tran PT, Stish BJ, Pisansky TM, Zaorsky NG, Moraes FY, Berlin A, Finelli A, Fossati N, Gandaglia G, Briganti A, Carroll PR, Karnes RJ, Kattan MW, Schipper MJ and Spratt DE. 2020. Development and Validation of a Clinical Prognostic Stage Group System for Non-Metastatic Prostate Cancer: Disease Specific Mortality Results from the International Staging Collaboration for Cancer of the Prostate (STAR-CAP). JAMA Oncology. 
