@@ -31,7 +31,8 @@ ui <- fluidPage(
                                 sidebarPanel(
                                         numericInput("age", 
                                                      "Age (years)", 
-                                                     value = 65),
+                                                     value = 65,
+                                                     min = 0),
                                         selectInput("tstage", 
                                                     "Clinical T Stage", 
                                                     choices = list("T1a" = 1,
@@ -43,7 +44,7 @@ ui <- fluidPage(
                                                                    "T3a" = 7,
                                                                    "T3b" = 8,
                                                                    "T4" = 9),
-                                                    selected = 1),
+                                                    selected = 3),
                                         selectInput("nstage", 
                                                     "Clinical N Stage", 
                                                     choices = list("N0" = 1, 
@@ -63,13 +64,16 @@ ui <- fluidPage(
                                                     selected = 3),
                                         numericInput("pos_cores", 
                                                      "Number of positive cores", 
-                                                     value = 6),
+                                                     value = 3,
+                                                     min = 0),
                                         numericInput("neg_cores", 
                                                      "Number of negative cores", 
-                                                     value = 6),
+                                                     value = 9,
+                                                     min = 0),
                                         numericInput("psa", 
                                                      "PSA (ng/mL)", 
-                                                     value = 4),
+                                                     value = 4,
+                                                     min = 0),
                                         submitButton("Update"),
                                         bsTooltip("age", "This is the patient's current age.", 
                                                   "right", options = list(container = "body")),
@@ -189,8 +193,9 @@ server <- function(input, output) {
                                                                                                     ">=17"))))))))
         
             patient_char <- data.frame("Age" = input$age, "Nstage" = input$nstage, "Tstage" = input$tstage, "PSA" = input$psa, 
-                                       "Pct_cores" = pct_score*100 , "Gleason" = paste0(input$primarygleason, "+", input$secondarygleason))
-            patient_char$Nstage <- factor(patient_char$Nstage, levels=c(1, 2), labels=c("node negative", "node positive"))
+                                       "Pct_cores" = round(pct_score*100, digits= 1) , "Gleason" = paste0(input$primarygleason, "+", input$secondarygleason),
+                                       "Pos_cores" = input$pos_cores, "Tot_cores" = input$pos_cores + input$neg_cores)
+            patient_char$Nstage <- factor(patient_char$Nstage, levels=c(1, 2), labels=c("N0", "N1"))
             patient_char$Tstage <- factor(patient_char$Tstage, levels=c(1:9), labels=c("T1a","T1b", "T1c", "T2a","T2b","T2c","T3a","T3b","T4"))
            
             #Here I'm getting the predictions from the score model (in my original formulation, I outputted the survival curves for each score
@@ -313,9 +318,10 @@ server <- function(input, output) {
        
        output$text0 <- renderText({
                
-        paste0("This patient is age ", model()$patient_char$Age, " years, ", model()$patient_char$Nstage, " with T stage ", 
-               model()$patient_char$Tstage, " and Gleason group ", model()$patient_char$Gleason, ". His PSA is ", model()$patient_char$PSA, " ng/mL, and he has ", model()$patient_char$Pct_cores,
-               "% positive cores.")
+        paste0("This patient is  ", model()$patient_char$Age, " years old with clinical ", model()$patient_char$Tstage, " ", 
+               model()$patient_char$Nstage, " M0 prostate adenocarcinoma, Gleason ", model()$patient_char$Gleason, " with ",
+               model()$patient_char$Pos_cores, "/", model()$patient_char$Tot_cores, " (", model()$patient_char$Pct_cores,
+               "%) core biopsies positive, and a PSA of ", model()$patient_char$PSA, " ng/mL.")
                
        })
        
