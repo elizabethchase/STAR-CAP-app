@@ -23,6 +23,7 @@ load("ClinMods.RData")
 
 # Defining the user interface:
 ui <- fluidPage(
+        tags$head(shiny::includeHTML(("google-analytics.html"))),
         titlePanel("STAR CAP Prostate Cancer Staging System"), #Feel free to change the title if you have thoughts!
             mainPanel(
                 tabsetPanel(
