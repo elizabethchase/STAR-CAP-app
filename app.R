@@ -181,6 +181,21 @@ server <- function(input, output) {
             pct_score <- input$pos_cores/(input$pos_cores + input$neg_cores)
             pct_cores <- ifelse(pct_score <= 0.5, 0, 
                             ifelse(pct_score >0.5 & pct_score <= 0.75, 2, 3))     
+            
+            nccn_highrisk <- sum(c(input$tstage==7, input$psa > 20, grade >= 6))
+            nccn_veryhigh <- sum(c(input$tstage >= 8, input$primarygleason==5))
+            nccn_intermed <- sum(c(input$tstage==5 | input$tstage==6, grade == 3, grade == 5,
+                                  input$psa >= 10 & input$psa <= 20))
+            nccn <- ifelse(input$tstage==3 & input$primarygleason==3 & input$secondarygleason==3 & input$psa < 10 &
+                                   input$pos_cores < 3 & pct_score <= 0.5, "Very low", 
+                           ifelse(input$tstage <= 4 & input$primarygleason==3 & input$secondarygleason==3 & 
+                                          input$psa < 10, "Low", 
+                                  ifelse(nccn_veryhigh >= 1 | nccn_highrisk >= 2, "Very high",
+                                         ifelse(nccn_veryhigh==0 & nccn_highrisk==1, "High",
+                                                ifelse(nccn_highrisk==0 & nccn_veryhigh==0 & nccn_intermed==1 & input$primarygleason==3 & pct_score < 0.5, 
+                                                       "Favorable intermediate", "Unfavorable intermediate"))
+                                                 )))
+            
             subscore <- grade + nstage + tstage + age_score + psa + pct_cores
             pcsm_dat <- data.frame("S1_Score_Comb_Final"=NA)
             pcsm_dat$S1_Score_Comb_Final <- ifelse(subscore==0, "0",
@@ -312,7 +327,7 @@ server <- function(input, output) {
             
             #Output results:
             #list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, mypred_me = mypred_me, mypred_int = mypred_int)
-            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, patient_char = patient_char)
+            list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, patient_char = patient_char, nccn = nccn)
             
             
         })
@@ -322,7 +337,7 @@ server <- function(input, output) {
         paste0("This patient is  ", model()$patient_char$Age, " years old with clinical ", model()$patient_char$Tstage, " ", 
                model()$patient_char$Nstage, " M0 prostate adenocarcinoma, Gleason ", model()$patient_char$Gleason, " with ",
                model()$patient_char$Pos_cores, "/", model()$patient_char$Tot_cores, " (", model()$patient_char$Pct_cores,
-               "%) core biopsies positive, and a PSA of ", model()$patient_char$PSA, " ng/mL.")
+               "%) core biopsies positive, and a PSA of ", model()$patient_char$PSA, " ng/mL. He is NCCN Risk Group ", model()$nccn, ".")
                
        })
        
