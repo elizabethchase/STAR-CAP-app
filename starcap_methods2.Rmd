@@ -6,6 +6,10 @@ output: html_document
 
 Our staging model is for patients diagnosed with prostate cancer who have not yet begun treatment. We predict the long-term chances of dying from prostate cancer after standard treatments including surgical removal of the prostate gland or curative radiation therapy with or without hormonal therapy. In external validation, this system outperformed similar prediction models such as NCCN, AJCC 8th edition, and CAPRA.
 
+## Outputs
+
+In addition to providing predictions from the STAR-CAP model, we also summarize patient characteristics and provide the NCCN risk group for ease of clinical use. NOTE: we have collapsed the Very Low/Low NCCN risk group and the Very High/High NCCN risk group because our model does not use the predictors needed to distinguish between Very Low and Low risk or Very High and High risk. Patients grouped as being NCCN Low risk may be NCCN Low or Very Low risk, and similarly with High and Very High. 
+
 ## Methods
 
 The models were built based on a collection of over 40,000 prostate cancer patients diagnosed and treated in North America and Europe from 1992-2013 as part of the International Staging Collaboration for Cancer of the Prostate (STAR-CAP) cohort. The variables include age, clinical T-stage, clinical N-stage, primary and secondary Gleason score based on biopsy, percent positive cores (percent of total biopsy cores positive/total biopsy cores), and pretreatment serum prostate specific antigen. The model given here provides clinical prognostic stage grouping (Stage IA-IIIC). 

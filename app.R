@@ -23,7 +23,45 @@ load("ClinMods.RData")
 
 # Defining the user interface:
 ui <- fluidPage(
-        tags$head(shiny::includeHTML(("google-analytics.html"))),
+        tags$head(HTML(
+                "<script async src='https://www.googletagmanager.com/gtag/js?id=UA-179472953-1'></script>
+                <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                
+                gtag('config', 'UA-179472953-1');
+                </script>
+                "
+        )),
+        
+       # conditionalPanel(condition = "input.goToApp == false",
+        #                 br(),
+                         
+                         
+         #                fluidRow(
+          #                       column(12, style = "text-align: center;", 
+           #                             checkboxInput(inputId = "agree",
+            #                                          label = "Click here if you have read the above disclaimer and agree to all statements.", width = "100%"),
+                                        
+             #                           conditionalPanel(condition = "input.agree == true",
+              #                                           actionButton(inputId = "goToApp",
+               #                                                       label = "Proceed to STAR-CAP",style='padding:4px; font-size:120%') )
+                                        
+                                        
+                #                 )
+                 #        ),
+                         
+                  #       br(),
+                   #      br(),
+                    #     br()
+                         
+                         
+                         
+#        ),
+        
+        #Once disclaimer is clicked, show app
+        #conditionalPanel(condition = "input.goToApp == true",
         titlePanel("STAR CAP Prostate Cancer Staging System"), #Feel free to change the title if you have thoughts!
             mainPanel(
                 tabsetPanel(
@@ -74,7 +112,8 @@ ui <- fluidPage(
                                         numericInput("psa", 
                                                      "PSA (ng/mL)", 
                                                      value = 4,
-                                                     min = 0),
+                                                     min = 0,
+                                                     max = 200),
                                         submitButton("Update"),
                                         bsTooltip("age", "This is the patient's current age.", 
                                                   "right", options = list(container = "body")),
@@ -86,7 +125,7 @@ ui <- fluidPage(
                                                   "right", options = list(container = "body")),
                                         bsTooltip("secondarygleason", "This is the patient's most recent secondary Gleason score from biopsy.", 
                                                   "right", options = list(container = "body")),
-                                        bsTooltip("psa", "This is the patient's last pre-treatment PSA result.", 
+                                        bsTooltip("psa", "This is the patient's last pre-treatment PSA result. It should be between 0-200 ng/mL.", 
                                                   "right", options = list(container = "body")),
                                         bsTooltip("tstage", "This is the patient's AJCC 8th edition T stage.", 
                                                   "right", options = list(container = "body")),
@@ -96,8 +135,8 @@ ui <- fluidPage(
                                 mainPanel(
                                   br(),
                                   "Our staging model is for patients diagnosed with prostate cancer who have not 
-                                           yet begun treatment. We predict the long-term chances of dying from prostate cancer 
-                                           after standard treatments including surgical removal of the prostate gland or 
+                                           yet begun treatment. We predict the long-term chances of dying from prostate cancer", 
+                                           em("with standard curative treatments"), "including surgical removal of the prostate gland or 
                                            curative radiation therapy with or without hormonal therapy.",
                                   br(),
                                   br(),
@@ -107,6 +146,8 @@ ui <- fluidPage(
                                       "Stage",
                                       br(),
                                       textOutput("text0"),
+                                      br(),
+                                      textOutput("text0a"),
                                       br(),
                                       textOutput("text1"), 
                                       br(),
@@ -138,7 +179,20 @@ ui <- fluidPage(
                                     )
                                   )
                                 )
-        )
+        ),
+        hr(),
+        print("Disclaimer: The content provided does not provide medical advice. 
+              By proceeding, you acknowledge that viewing or use of this content does 
+              not create a medical professional-patient relationship, and does not 
+              constitute an opinion, medical advice, professional service or treatment 
+              recommendation of any condition. Content provided is for educational purposes only. 
+              The information and Content provided are not substitutes for medical or professional care, 
+              and you should not use the information in place of a visit, call, consultation or the 
+              advice of your physician or other healthcare provider. You are liable or responsible for 
+              any advice, course of treatment, or any other information, services that are based on 
+              Content through this site."),
+        br(),
+        br()
      ), 
      tabPanel("More Information", 
               br(),
@@ -150,9 +204,22 @@ ui <- fluidPage(
               br(),
               tableOutput("infotable2"),
               br(),
-              includeMarkdown("starcap_methods4.Rmd"))
+              includeMarkdown("starcap_methods4.Rmd"),
+              hr(),
+              print("Disclaimer: The content provided does not provide medical advice. 
+              By proceeding, you acknowledge that viewing or use of this content does 
+              not create a medical professional-patient relationship, and does not 
+              constitute an opinion, medical advice, professional service or treatment 
+              recommendation of any condition. Content provided is for educational purposes only. 
+              The information and Content provided are not substitutes for medical or professional care, 
+              and you should not use the information in place of a visit, call, consultation or the 
+              advice of your physician or other healthcare provider. You are liable or responsible for 
+              any advice, course of treatment, or any other information, services that are based on 
+              Content through this site.")),
+              br(),
+              br()
  )
-            ))
+            ))#)
 
 
 # This is where you do the math to get the sentence/plot given above. 
@@ -187,15 +254,16 @@ server <- function(input, output) {
             nccn_intermed <- sum(c(input$tstage==5 | input$tstage==6, grade == 3, grade == 5,
                                   input$psa >= 10 & input$psa <= 20))
             nccn <- ifelse(input$tstage==3 & input$primarygleason==3 & input$secondarygleason==3 & input$psa < 10 &
-                                   input$pos_cores < 3 & pct_score <= 0.5, "Very low", 
+                                   input$pos_cores < 3 & pct_score <= 0.5, "Very Low", 
                            ifelse(input$tstage <= 4 & input$primarygleason==3 & input$secondarygleason==3 & 
                                           input$psa < 10, "Low", 
-                                  ifelse(nccn_veryhigh >= 1 | nccn_highrisk >= 2, "Very high",
+                                  ifelse(nccn_veryhigh >= 1 | nccn_highrisk >= 2, "Very High",
                                          ifelse(nccn_veryhigh==0 & nccn_highrisk==1, "High",
                                                 ifelse(nccn_highrisk==0 & nccn_veryhigh==0 & nccn_intermed==1 & input$primarygleason==3 & pct_score < 0.5, 
-                                                       "Favorable intermediate", "Unfavorable intermediate"))
+                                                       "Favorable Intermediate", "Unfavorable Intermediate"))
                                                  )))
             
+            nccn <- ifelse(nccn=="Very Low", "Low", ifelse(nccn=="Very High", "High", nccn))
             subscore <- grade + nstage + tstage + age_score + psa + pct_cores
             pcsm_dat <- data.frame("S1_Score_Comb_Final"=NA)
             pcsm_dat$S1_Score_Comb_Final <- ifelse(subscore==0, "0",
@@ -333,12 +401,18 @@ server <- function(input, output) {
         })
        
        output$text0 <- renderText({
-               
+
         paste0("This patient is  ", model()$patient_char$Age, " years old with clinical ", model()$patient_char$Tstage, " ", 
-               model()$patient_char$Nstage, " M0 prostate adenocarcinoma, Gleason ", model()$patient_char$Gleason, " with ",
-               model()$patient_char$Pos_cores, "/", model()$patient_char$Tot_cores, " (", model()$patient_char$Pct_cores,
-               "%) core biopsies positive, and a PSA of ", model()$patient_char$PSA, " ng/mL. He is NCCN Risk Group ", model()$nccn, ".")
-               
+                model()$patient_char$Nstage, " M0 prostate adenocarcinoma, Gleason ", model()$patient_char$Gleason, " with ",
+                model()$patient_char$Pos_cores, "/", model()$patient_char$Tot_cores, " (", model()$patient_char$Pct_cores,
+                "%) core biopsies positive, and a PSA of ", model()$patient_char$PSA, " ng/mL.")
+                  
+       })
+       
+       output$text0a <- renderText({
+          if (model()$patient_char$Nstage == "N0"){
+                paste0("This patient is NCCN risk group ", model()$nccn, ".")
+          }
        })
        
        output$text1 <- renderText({
