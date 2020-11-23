@@ -2,6 +2,8 @@
 output: html_document
 ---
 
+If you have comments or features you'd like to see added to the app, please contact us at starcap.app@umich.edu.
+
 ## Purpose 
 
 Our staging model is for patients diagnosed with prostate cancer who have not yet begun treatment. We predict the long-term chances of dying from prostate cancer after standard treatments including surgical removal of the prostate gland or curative radiation therapy with or without hormonal therapy. In external validation, this system outperformed similar prediction models such as NCCN, AJCC 8th edition, and CAPRA.
