@@ -322,7 +322,7 @@ server <- function(input, output) {
        output$pict1 <- renderPlot({
          
          ggplot(data = model()$waffle_data, aes(x, y, color = group)) + 
-           geom_text(aes(label = label), family = 'fontawesome-webfont', size = 10) + 
+           geom_text(aes(label = label), family = 'fontawesome-webfont', size = 8) + 
            coord_equal() + 
            theme_bw() + theme_waffle() + xlab("") + ylab("") + 
            scale_color_manual(name = "Outcome", values = c("gray74", "darkred")) + 
