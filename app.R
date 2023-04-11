@@ -11,7 +11,7 @@ library(markdown)
 library(ggwaffle)
 library(emojifont)
 
-load("ClinMods.RData")
+load("ClinMods2.RData")
 
 # Defining the user interface:
 ui <- fluidPage(
@@ -99,7 +99,7 @@ ui <- fluidPage(
                                 mainPanel(
                                   br(),
                                   "Our staging model is for patients diagnosed with prostate cancer who have not 
-                                           yet begun treatment. We predict the long-term chances of dying from prostate cancer", 
+                                           yet begun treatment. We predict the long-term outcomes", 
                                            em("with standard curative treatments"), "including surgical removal of the prostate gland or 
                                            curative radiation therapy with or without hormonal therapy.",
                                   br(),
@@ -111,9 +111,9 @@ ui <- fluidPage(
                                       br(),
                                       textOutput("text0"),
                                       br(),
-                                      textOutput("text0a"),
+                                      htmlOutput("text0a"),
                                       br(),
-                                      textOutput("text1"), 
+                                      htmlOutput("text1"), 
                                       br(),
                                       tableOutput("table1"),
                                       bsTooltip("table1", "This predicts a patient's probability of dying of his prostate cancer at 5 and 10 years.", 
@@ -124,13 +124,15 @@ ui <- fluidPage(
                                       br(),
                                       textOutput("text2"),
                                       br(),
+                                      plotOutput("pict2"),
+                                      br(),
                                       plotOutput("pict1")
                                     ),
                                     tabPanel(
                                       "Cumulative Incidence",
                                       plotOutput("plot1"),
                                       fluidRow(
-                                        column(sliderInput(inputId = "years", label="Years", min = 0, max = 15, value = 10), width = 10),
+                                        column(sliderInput(inputId = "years", label="Years", min = 0, max = 14, value = 10), width = 10),
                                         column(submitButton("Update"), width = 2)
                                       ),
                                       br(),
@@ -248,16 +250,20 @@ server <- function(input, output) {
             #"pcsm_predictions" and loaded that into the app):
             # Cumulative incidence curves for each Score level 
             pcsm_predictions <- z.p.all_val
+            dm_predictions <- z.p.all_dm
 
-            pcsm_surv <- pcsm_predictions[,which(c("0","1-2","3-4","5-6","7-8","9-10","11-12", "13-16",">=17")==pcsm_dat$S1_Score_Comb_Final)+1]
-            pcsm_time <- pcsm_predictions[,1]
+            pcsm_surv <- pcsm_predictions[,which(c("0","1-2","3-4","5-6","7-8","9-10","11-12", "13-16",">=17")==pcsm_dat$S1_Score_Comb_Final)]
+            dm_surv <- dm_predictions[,which(c("0","1-2","3-4","5-6","7-8","9-10","11-12", "13-16",">=17")==pcsm_dat$S1_Score_Comb_Final)]
+            common_times <- seq(0, 167.5, by = 0.5)
+    
             
             # #Combine this into a data-frame:
-            alldat <- data.frame("Time" = c(0, pcsm_time),
-                                "Risk" = c(0, pcsm_surv),
-                               "Model" = c(rep("Score", length(pcsm_time)+1)))
+            alldat <- data.frame("Time" = c(0, common_times, 0, common_times),
+                                 "Est" = c(0, pcsm_surv, 0, dm_surv),
+                               "Outcome" = c(rep(c("PCSM", "Distant Metastases"), each = (length(common_times)+1))))
             
-            dat_score <- data.frame("Time" = c(0, pcsm_time), "Risk" = c(0, pcsm_surv))
+            dat_score <- data.frame("Time" = c(0, common_times), "Risk" = c(0, pcsm_surv))
+            dat_score_dm <- data.frame("Time" = c(0, common_times), "Risk" = c(0, dm_surv))
            
             #Here you might output each patient's predicted stage:
             stagepred <- case_when(
@@ -272,22 +278,39 @@ server <- function(input, output) {
                     pcsm_dat$S1_Score_Comb_Final==">=17" ~ "IIIC")
             
             riskten <- dat_score$Risk[which.min(ifelse((120-dat_score$Time) < 0, NA, (120-dat_score$Time)))]
+            riskten_dm <- dat_score_dm$Risk[which.min(ifelse((120-dat_score_dm$Time) < 0, NA, (120-dat_score_dm$Time)))]
             riskfive <- dat_score$Risk[which.min(ifelse((60-dat_score$Time) < 0, NA, (60-dat_score$Time)))]
+            riskfive_dm <- dat_score_dm$Risk[which.min(ifelse((60-dat_score_dm$Time) < 0, NA, (60-dat_score_dm$Time)))]
             
-            resultstab <- data.frame("Metric" = c("Stage", "5-Year Prostate Cancer Specific Mortality", "10-Year Prostate Cancer Specific Mortality"), 
-                                     "Prediction" = c(stagepred, paste0(round(riskfive*100, digits = 1), "%"),
+            resultstab <- data.frame("Time" = c("5 Years", "10 Years"), 
+                                     "Metastases" = c(paste0(round(riskfive_dm*100, digits = 1), "%"),
+                                              paste0(round(riskten_dm*100, digits = 1), "%")),
+                                     "PCSM" = c(paste0(round(riskfive*100, digits = 1), "%"),
                                                 paste0(round(riskten*100, digits = 1), "%")))
           
             mypred <- round(dat_score$Risk[which.min(ifelse((input$years*12-dat_score$Time) < 0, NA, (input$years*12-dat_score$Time)))]*100, digits=1)
+            mypred_dm <- round(dat_score_dm$Risk[which.min(ifelse((input$years*12-dat_score_dm$Time) < 0, NA, (input$years*12-dat_score_dm$Time)))]*100, digits=1)
+            mypred_free <- round((100-mypred-mypred_dm), digits = 1)
             
-            subdat <- data.frame("Outcome" = c(rep("PCSM", round(riskten*100, digits=0)), 
+            subdat <- data.frame("Outcome" = c(rep("PCSM", round(riskten*100, digits=0)),
                                               rep("Alive", 100-round(riskten*100, digits=0))), "Test" = 1)
+            
+            subdat$Outcome <- factor(subdat$Outcome, levels = c("Alive", "PCSM"), ordered = TRUE)
             
             waffle_data <- waffle_iron(subdat, aes_d(group = Outcome), rows = 10) %>% 
               mutate(label = fontawesome('fa-male'))
             
+            subdat2 <- data.frame("Outcome" = c(rep("Metastases", round(riskten_dm*100, digits = 0)),
+                                               rep("Mets-Free", 100-round(riskten_dm*100, digits=0))), "Test" = 1)
+            
+            subdat2$Outcome <- factor(subdat2$Outcome, levels = c("Mets-Free", "Metastases"), ordered = TRUE)
+            
+            waffle_data2 <- waffle_iron(subdat2, aes_d(group = Outcome), rows = 10) %>% 
+              mutate(label = fontawesome('fa-male'))
+            
             list(alldat = alldat, stagepred = stagepred, riskten = riskten, resultstab = resultstab, mypred = mypred, 
-                 patient_char = patient_char, nccn = nccn, waffle_data = waffle_data)
+                 patient_char = patient_char, nccn = nccn, waffle_data = waffle_data, waffle_data2 = waffle_data2,
+                 riskten_dm = riskten_dm, mypred_dm = mypred_dm, mypred_free = mypred_free)
             
             
         })
@@ -303,20 +326,23 @@ server <- function(input, output) {
        
        output$text0a <- renderText({
           if (model()$patient_char$Nstage == "N0"){
-                paste0("This patient is NCCN risk group ", model()$nccn, ".")
+                paste0("This patient is <b>NCCN risk group ", model()$nccn, "<b>.")
           }
        })
        
        output$text1 <- renderText({
-        paste0("This patient is grouped in STAR CAP Stage ", model()$stagepred, ".")
+        paste0("This patient is grouped in <b>STAR CAP Stage ", model()$stagepred, "<b>.")
        })
        
-       output$table1 <- function(){kable(model()$resultstab) %>% column_spec(column = c(1:2), width = "4cm") %>%
+       output$table1 <- function(){kable(model()$resultstab, col.names = c("Time", "Metastases", "Prostate Cancer Specific Mortality")) %>% 
+                       column_spec(column = c(1:3), width = "4cm") %>%
                        kable_styling()}
        
        output$text2 <- renderText({
-               number <- ifelse(round(model()$riskten*100, digits=1) < 1, "less than 1", round(model()$riskten*100, digits=0))
-               paste0("Of 100 men with prostate cancer like yours, ", number, " will have died of their prostate cancer in 10 years.")
+               number <- ifelse(round(model()$riskten*100, digits=0) < 1, "less than 1", round(model()$riskten*100, digits=0))
+               number2 <- ifelse(round(model()$riskten_dm*100, digits=0) < 1, "less than 1", round(model()$riskten_dm*100, digits=0))
+               paste0("Of 100 men with prostate cancer like yours, ", number2, " will have developed distant metastases in 10 years, and ",
+                      number, " will have died of their prostate cancer in 10 years.")
        })
        
        output$pict1 <- renderPlot({
@@ -325,21 +351,36 @@ server <- function(input, output) {
            geom_text(aes(label = label), family = 'fontawesome-webfont', size = 8) + 
            coord_equal() + 
            theme_bw() + theme_waffle() + xlab("") + ylab("") + 
-           scale_color_manual(name = "Outcome", values = c("gray74", "darkred")) + 
-           theme(text = element_text(size = 12))
+           scale_color_manual(name = "Outcome", values = c("gray74", "darkred"), 
+                              guide = guide_legend(reverse = TRUE)) + 
+           theme(text = element_text(size = 12), legend.position = "top")
+       })
+       
+       output$pict2 <- renderPlot({
+         
+         ggplot(data = model()$waffle_data2, aes(x, y, color = group)) + 
+           geom_text(aes(label = label), family = 'fontawesome-webfont', size = 8) + 
+           coord_equal() + 
+           theme_bw() + theme_waffle() + xlab("") + ylab("") + 
+           scale_color_manual(name = "Outcome", values = c("gray74", "mediumpurple4"), 
+                              guide = guide_legend(reverse = TRUE)) + 
+           theme(text = element_text(size = 12), legend.position = "top")
        })
        
        output$plot1 <- renderPlot({
                
-               ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Risk*100), size = 1.5,
-                                    direction = "hv", alpha = 1, color = "mediumpurple4") +
+               ggplot() + geom_step(data = model()$alldat, aes(x = Time, y = Est*100, color = Outcome)) +
                        scale_x_continuous("Years", limits = c(0, 192), breaks = seq(0, 192, by=48), labels = c("0", "4", "8", "12", "16")) +
                        scale_y_continuous("Risk (%)", breaks = c(0, 25, 50, 75, 100)) + coord_cartesian(ylim=c(0, 100)) + theme_bw() + 
-                       geom_hline(yintercept = model()$mypred) + geom_vline(xintercept = input$years*12)
+                       geom_hline(yintercept = model()$mypred, color = "darkred", linetype = "dashed") + 
+                       geom_hline(yintercept = (model()$mypred_dm), color = "mediumpurple4", linetype = "dashed") + 
+                       geom_vline(xintercept = input$years*12, linetype = "dashed") + 
+                       scale_color_manual(values = c("mediumpurple4", "darkred"))
        })
        
        output$info1 <- renderText({
-               paste0("At ", round(input$years, digits = 2), " years, the probability of dying of prostate cancer is ", model()$mypred, "%.")
+               paste0("At ", round(input$years, digits = 2), " years, the probability of developing distant metastases is ", model()$mypred_dm, "%. The 
+               probability of dying of prostate cancer is ", model()$mypred, "%.")
        })
        
        output$infotable2 <- function(){

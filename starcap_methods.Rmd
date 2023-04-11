@@ -4,7 +4,7 @@ output: html_document
 
 ## Purpose 
 
-Our staging model is for patients diagnosed with prostate cancer who have not yet begun treatment. We predict the long-term chances of dying from prostate cancer after standard treatments including surgical removal of the prostate gland or curative radiation therapy with or without hormonal therapy. 
+Our staging model is for patients diagnosed with prostate cancer who have not yet begun treatment. We predict the long-term outcomes of prostate cancer after standard treatments including surgical removal of the prostate gland or curative radiation therapy with or without hormonal therapy. 
 
 ## Methods
 
